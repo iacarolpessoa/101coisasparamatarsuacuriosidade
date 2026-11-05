@@ -1,0 +1,337 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roleta: 101 coisas pra fazer antes de sair com alguém com idade pra ser seu pai</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        h1 {
+            font-family: 'Fredoka One', cursive;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+        }
+        .wheel-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            aspect-ratio: 1 / 1;
+        }
+        canvas {
+            border-radius: 50%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%;
+            height: 100%;
+        }
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0; 
+            height: 0; 
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 40px solid #ff4757;
+            z-index: 10;
+            filter: drop-shadow(0px 4px 2px rgba(0,0,0,0.3));
+        }
+        .btn-spin {
+            font-family: 'Fredoka One', cursive;
+            transition: all 0.2s ease;
+            box-shadow: 0 6px 0 #cc3945;
+        }
+        .btn-spin:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #cc3945;
+        }
+        .result-box {
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: scale(0.5);
+            opacity: 0;
+        }
+        .result-box.show {
+            transform: scale(1);
+            opacity: 1;
+        }
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4 py-10">
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <div class="max-w-2xl w-full text-center z-10 relative">
+        <h1 class="text-3xl md:text-5xl text-white font-bold mb-6 leading-tight">
+            101 coisas pra fazer <br>
+            <span class="text-xl md:text-3xl text-pink-700">antes de sair com alguém com idade pra ser seu pai aos 20 e poucos anos</span>
+        </h1>
+
+        <!-- Roleta -->
+        <div class="wheel-container mb-8">
+            <div class="pointer"></div>
+            <canvas id="wheelCanvas" width="800" height="800"></canvas>
+        </div>
+
+        <!-- Botão Girar -->
+        <button id="spinBtn" class="btn-spin bg-pink-500 hover:bg-pink-600 text-white text-2xl md:text-4xl py-4 px-12 rounded-full mb-8 uppercase tracking-wider">
+            Girar Roleta!
+        </button>
+
+        <!-- Caixa de Resultado -->
+        <div id="resultBox" class="result-box hidden bg-white rounded-3xl p-6 md:p-8 shadow-2xl border-4 border-pink-400 mx-auto max-w-lg">
+            <p class="text-pink-500 font-bold uppercase tracking-widest text-sm mb-2">Seu Destino:</p>
+            <p id="resultText" class="text-2xl md:text-3xl font-bold text-gray-800"></p>
+        </div>
+    </div>
+
+    <script>
+        // Lista das 101 coisas (limpa de artefatos do PDF)
+        const items = [
+            "Escrever um best-seller", "Nadar com...", "Ganhar algum tipo de prêmio", "Pescar um peixe com a mão", "Fazer uma descoberta", 
+            "Dar uma festa em casa quando seus pais não estiverem", "Participar de um ménage à trois", "Realizar seu sonho de criança", 
+            "Aprender a tocar um instrumento", "Pichar um muro", "Correr atrás de um tornado", "Expor uma obra de arte", 
+            "Conhecer alguém com o mesmo nome que você", "Andar nas maiores montanhas-russas do mundo", "Dar mosh ou surfar a platéia", 
+            "Entrar para o Livro Guinness dos Recordes Mundiais", "Ter uma coleção inútil", "Estudar o Kama Sutra e pôr a teoria em prática", 
+            "Ficar craque no pôquer e ganhar uma bolada no cassino", "Entrar no camarim e dar uns pegas em um ídolo do rock", "Ser uma cobaia humana", 
+            "Voar de balão", "Ser preso(a)", "Ver uma espaçonave decolar", "Imortalizar o momento com uma fotografia premiada", 
+            "Pular de bungee jump", "Assistir à erupção de um vulcão", "Pular de pára-quedas", "Conhecer o seu ídolo", 
+            "Hospedar-se na melhor suíte de um hotel cinco estrelas", "Estar em um ambiente sem gravidade", "Ver a aurora boreal", 
+            "Acertar um buraco com uma tacada só", "Inventar seu próprio drinque", "Participar do seu programa de TV favorito", 
+            "Visitar cada país do mundo", "Fazer fogueira sem fósforos", "Ver estes animais em seu habitat natural", "Ver uma corrida de cachorros", 
+            "Conseguir um upgrade de graça em um avião", "Ser amigo(a) da(o) sua(seu) ex", "Praticar tiro ao alvo", 
+            "Jogar um dardo no mapa e viajar para onde ele cair", "Ir à pré-estréia de um filme", "Fugir de um restaurante chique sem pagar a conta", 
+            "Mergulhar de garrafa", "Ordenhar uma vaca", "Estar presente quando seu país ganhar a Copa do Mundo", "Ver um eclipse solar e um lunar", 
+            "Escrever seu nome em uma estrela da Calçada da Fama", "Aprender outra língua", "Ler os melhores livros jamais escritos", 
+            "Viajar de carro pelo litoral brasileiro", "Fazer ao menos uma compra que você não possa pagar", "Marcar o gol/try/cesta da vitória", 
+            "Entrar de penetra em uma festa chique", "Assistir aos melhores filmes de todos os tempos", "Morar no lugar que você ama", 
+            "Sair do emprego que você odeia", "Participar de uma identificação policial", "Enganar alguém com a brincadeira ou a mentira perfeita", 
+            "Transar em um avião", "Sair na primeira página de um jornal de circulação nacional", "Dirigir um carro a toda velocidade", 
+            "Gritar “Eu pago esta rodada!” em um bar lotado", "Fazer parte de uma flash mob", "Visitar...", "Salvar a vida de alguém", 
+            "Em várias línguas, aprender a...", "Inventar uma palavra que entre no dicionário", "Fazer sexo arriscado", 
+            "Ter dinheiro suficiente para fazer todas as coisas desta lista", "Pisar na Linha Internacional do Tempo", "Aprender a pilotar um avião", 
+            "Fazer uma tatuagem e/ou um piercing", "Inventar alguma coisa", "Aprender astronomia e ler o céu à noite", "Beber um vinho de uma boa safra", 
+            "Responder a um anúncio pessoal", "Passar um Natal com neve", "Ser barrado(a) de um bar", "Construir a própria casa", 
+            "Tomar banho ao ar livre pelado(a) à meia-noite", "Vender toda sua tralha no eBay e ganhar dinheiro", "Visitar os edifícios mais altos do mundo", 
+            "Correr uma maratona", "Vencer o seu medo", "Casar-se de forma inusitada", "Jogar o Miojo no lixo", "Voar em um avião supersônico", 
+            "Pôr no ar um site cult", "Possuir uma obra de arte original", "Completar a Turnê dos Bares do Banco Imobiliário", "Dar seu nome a alguma coisa", 
+            "Vingar-se de alguém", "Ser figurante em um filme", "Viver sobre quatro rodas", "Participar de uma passeata", "Confessar", 
+            "Completar 100 anos de idade", "Perpetuar seus genes"
+        ];
+
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const numSlices = items.length;
+        const sliceAngle = (2 * Math.PI) / numSlices;
+        const colors = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA'];
+
+        let currentRotation = 0;
+        let angularVelocity = 0;
+        let isSpinning = false;
+        let animationFrame;
+
+        // Elementos da UI
+        const btnSpin = document.getElementById('spinBtn');
+        const resultBox = document.getElementById('resultBox');
+        const resultText = document.getElementById('resultText');
+
+        // Desenhar a roleta
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const r = canvas.width / 2;
+
+            for (let i = 0; i < numSlices; i++) {
+                const startAngle = i * sliceAngle + currentRotation;
+                const endAngle = (i + 1) * sliceAngle + currentRotation;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, startAngle, endAngle);
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.closePath();
+                
+                // Bordas das fatias (opcional, mas como são 101, fica um efeito texturizado)
+                ctx.strokeStyle = "rgba(0,0,0,0.05)";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // Círculo central
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.1, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        }
+
+        // Atualizar física e animação
+        function animate() {
+            if (!isSpinning) return;
+
+            currentRotation += angularVelocity;
+            // Desaceleração (fricção)
+            angularVelocity *= 0.99;
+
+            drawWheel();
+
+            if (angularVelocity < 0.002) {
+                isSpinning = false;
+                cancelAnimationFrame(animationFrame);
+                determineResult();
+                return;
+            }
+
+            animationFrame = requestAnimationFrame(animate);
+        }
+
+        // Determinar onde a roleta parou
+        function determineResult() {
+            // O ponteiro aponta para o topo: 270 graus ou 1.5 * PI
+            const pointerAngle = 1.5 * Math.PI;
+            let selectedIndex = 0;
+
+            for (let i = 0; i < numSlices; i++) {
+                let start = (i * sliceAngle + currentRotation) % (2 * Math.PI);
+                let end = ((i + 1) * sliceAngle + currentRotation) % (2 * Math.PI);
+
+                // Normalizar para valores positivos
+                if (start < 0) start += 2 * Math.PI;
+                if (end < 0) end += 2 * Math.PI;
+
+                // Lidar com a fatia que cruza o ponto 0 (360 graus)
+                if (start > end) {
+                    if (pointerAngle >= start || pointerAngle <= end) {
+                        selectedIndex = i;
+                        break;
+                    }
+                } else {
+                    if (pointerAngle >= start && pointerAngle <= end) {
+                        selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            mostrarResultado(selectedIndex);
+        }
+
+        function mostrarResultado(index) {
+            resultText.innerText = `${index + 1}. ${items[index]}`;
+            resultBox.classList.remove('hidden');
+            
+            // Pequeno delay para a transição de CSS funcionar
+            setTimeout(() => {
+                resultBox.classList.add('show');
+                fireConfetti();
+            }, 50);
+
+            btnSpin.disabled = false;
+            btnSpin.innerText = "Girar Novamente!";
+            btnSpin.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        btnSpin.addEventListener('click', () => {
+            if (isSpinning) return;
+
+            // Esconder resultado anterior
+            resultBox.classList.remove('show');
+            setTimeout(() => {
+                resultBox.classList.add('hidden');
+            }, 300);
+
+            isSpinning = true;
+            btnSpin.disabled = true;
+            btnSpin.innerText = "Girando...";
+            btnSpin.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            // Velocidade inicial aleatória para resultados diferentes
+            angularVelocity = Math.random() * 0.2 + 0.3; 
+            
+            animate();
+        });
+
+        // Efeito de Confete
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        const cCtx = confettiCanvas.getContext('2d');
+        let confettis = [];
+
+        function resizeCanvas() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function fireConfetti() {
+            confettis = [];
+            for (let i = 0; i < 100; i++) {
+                confettis.push({
+                    x: confettiCanvas.width / 2,
+                    y: confettiCanvas.height / 2 + 100,
+                    vx: (Math.random() - 0.5) * 20,
+                    vy: (Math.random() - 1) * 20 - 5,
+                    size: Math.random() * 10 + 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rot: Math.random() * 360,
+                    rotSpeed: (Math.random() - 0.5) * 10
+                });
+            }
+            animateConfetti();
+        }
+
+        function animateConfetti() {
+            if (confettis.length === 0) return;
+            cCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            let activeConfettis = 0;
+
+            for (let i = 0; i < confettis.length; i++) {
+                let c = confettis[i];
+                c.x += c.vx;
+                c.y += c.vy;
+                c.vy += 0.5; // gravidade
+                c.rot += c.rotSpeed;
+
+                if (c.y < confettiCanvas.height) {
+                    activeConfettis++;
+                    cCtx.save();
+                    cCtx.translate(c.x, c.y);
+                    cCtx.rotate((c.rot * Math.PI) / 180);
+                    cCtx.fillStyle = c.color;
+                    cCtx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size);
+                    cCtx.restore();
+                }
+            }
+
+            if (activeConfettis > 0) {
+                requestAnimationFrame(animateConfetti);
+            } else {
+                cCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            }
+        }
+
+        // Desenhar roleta inicial
+        drawWheel();
+    </script>
+</body>
+</html>
